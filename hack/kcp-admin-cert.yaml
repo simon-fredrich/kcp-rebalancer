@@ -1,0 +1,42 @@
+# cert-manager Certificate for admin access through the kcp front-proxy ingress.
+# Issued by the kcp client CA.
+#
+# `system:kcp:admin` grants logical-cluster admin access. `system:masters`
+# additionally grants unrestricted access, including wildcard requests.
+#
+# commonName only needs to be a unique, human-identifiable client name - it
+# carries no special authorization on its own, the organization does.
+#
+# Apply with:
+#   kubectl apply -f resources/core/ops-scripts/hack/kcp-admin-cert.yaml
+#
+# Wait for it to be issued with:
+#   kubectl -n kcp wait --for=condition=Ready certificates.cert-manager.io/kcp-apibinding-lifecycle-admin --timeout=60s
+#
+# NOTE: this cluster registers more than one CRD for the "certificate" kind
+# (cert-manager.io and a crossplane azuread provider), so kubectl/-o wide
+# lookups must use the fully-qualified `certificates.cert-manager.io` resource
+# name instead of the ambiguous short form.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kcp-apibinding-lifecycle-admin
+  namespace: kcp
+spec:
+  commonName: system:kcp-apibinding-lifecycle-controller
+  duration: 8760h0m0s
+  renewBefore: 168h0m0s
+  secretName: kcp-apibinding-lifecycle-admin
+  issuerRef:
+    name: root-client-ca
+    kind: Issuer
+    group: cert-manager.io
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  subject:
+    organizations:
+      - system:kcp:admin
+      - system:masters
+  usages:
+    - client auth
